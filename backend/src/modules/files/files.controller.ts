@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FilesService } from './files.service';
-import { RenameDto } from '../folders/dto/create-folder.dto';
+import { UpdateFileDto } from '../folders/dto/update.dto';
 import type { FileResponseDto } from '../uploads/dto/upload-response.dto';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 
@@ -46,16 +46,21 @@ export class FilesController {
     });
   }
 
+  /** Rename, move, or both. See UpdateFileDto for the folderId semantics. */
   @Patch(':id')
-  rename(
+  update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: RenameDto,
+    @Body() dto: UpdateFileDto,
   ): Promise<FileResponseDto> {
-    return this.filesService.rename({
+    return this.filesService.update({
       userId: user.id,
       fileId: id,
       name: dto.name,
+      folderId: dto.folderId,
+      // `in` rather than a truthiness check: null is a meaningful value
+      // here (move to root) and must be distinguished from "not sent".
+      isMove: 'folderId' in dto,
     });
   }
 

@@ -34,6 +34,14 @@ export const filesService = {
     });
   },
 
+  /** null moves the folder to the owner's root. */
+  moveFolder(id: string, parentId: string | null): Promise<FolderItem> {
+    return apiRequest<FolderItem>(`/v1/folders/${id}`, {
+      method: "PATCH",
+      body: { parentId },
+    });
+  },
+
   deleteFolder(id: string): Promise<void> {
     return apiRequest<void>(`/v1/folders/${id}`, { method: "DELETE" });
   },
@@ -42,6 +50,14 @@ export const filesService = {
     return apiRequest<FileItem>(`/v1/files/${id}`, {
       method: "PATCH",
       body: { name },
+    });
+  },
+
+  /** null moves the file to the owner's root. */
+  moveFile(id: string, folderId: string | null): Promise<FileItem> {
+    return apiRequest<FileItem>(`/v1/files/${id}`, {
+      method: "PATCH",
+      body: { folderId },
     });
   },
 

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FoldersService } from './folders.service';
@@ -104,12 +104,13 @@ describe('FoldersService', () => {
     });
   });
 
-  describe('rename', () => {
+  describe('update', () => {
     it('scopes the update by owner so another user cannot rename it', async () => {
-      await service.rename({
+      await service.update({
         userId: USER_ID,
         folderId: 'folder-1',
         name: 'New name',
+        isMove: false,
       });
 
       expect(renameWhere).toMatchObject({
@@ -119,12 +120,71 @@ describe('FoldersService', () => {
       });
     });
 
-    it('404s when nothing matched', async () => {
-      folderUpdateMany.mockResolvedValue({ count: 0 });
+    it('404s for a folder the user does not own', async () => {
+      folderFindFirst.mockResolvedValue(null);
 
       await expect(
-        service.rename({ userId: USER_ID, folderId: 'x', name: 'n' }),
+        service.update({
+          userId: USER_ID,
+          folderId: 'x',
+          name: 'n',
+          isMove: false,
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('refuses to move a folder into itself', async () => {
+      await expect(
+        service.update({
+          userId: USER_ID,
+          folderId: 'folder-1',
+          parentId: 'folder-1',
+          isMove: true,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(folderUpdateMany).not.toHaveBeenCalled();
+    });
+
+    // The dangerous case: moving a parent under its own child would detach
+    // the subtree from the root and make the recursive CTEs loop forever.
+    it('refuses to move a folder into one of its descendants', async () => {
+      queryRaw.mockResolvedValue([{ is_descendant: true }]);
+
+      await expect(
+        service.update({
+          userId: USER_ID,
+          folderId: 'folder-1',
+          parentId: 'descendant',
+          isMove: true,
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(folderUpdateMany).not.toHaveBeenCalled();
+    });
+
+    it('allows a move to an unrelated folder', async () => {
+      queryRaw.mockResolvedValue([{ is_descendant: false }]);
+
+      await service.update({
+        userId: USER_ID,
+        folderId: 'folder-1',
+        parentId: 'elsewhere',
+        isMove: true,
+      });
+
+      expect(folderUpdateMany).toHaveBeenCalled();
+    });
+
+    it('allows a move to the root without a descendant check', async () => {
+      await service.update({
+        userId: USER_ID,
+        folderId: 'folder-1',
+        parentId: null,
+        isMove: true,
+      });
+
+      // Moving to the root can never create a cycle, so no query is needed.
+      expect(queryRaw).not.toHaveBeenCalled();
+      expect(folderUpdateMany).toHaveBeenCalled();
     });
   });
 

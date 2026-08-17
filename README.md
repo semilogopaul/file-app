@@ -141,6 +141,16 @@ Postgres recursive CTEs handle the subtree reads. Since a file/folder move
 is the most likely next feature, I optimised for the operation that would
 otherwise get expensive.
 
+**Moving is a single-column update**, which is the payoff of that choice.
+`PATCH /files/:id` and `PATCH /folders/:id` accept a destination alongside an
+optional new name, where `folderId`/`parentId` distinguishes three cases:
+omitted means "not a move", `null` means "move to root", and a uuid means
+that folder. Moving a folder runs one recursive query first to reject moving
+it into itself or any of its own descendants — that would detach the subtree
+from the root and leave the recursive CTEs looping forever. A move never
+touches object storage: the storage key is immutable, so an existing share
+link keeps working.
+
 **Soft-delete cascade is one statement, not a tree walk.** Deleting a folder
 runs a recursive CTE that collects the subtree, then two data-modifying CTEs
 that mark the folders and their files *in the same snapshot*:
@@ -247,6 +257,14 @@ which is worse than a brief wait. Optimistic folders carry a placeholder id
 and render non-navigable, because opening one would 404 before the server
 responds.
 
+**Move has two paths, because drag-and-drop is not accessible.** Dragging a
+row onto a folder is the fast path, but it is unusable with a keyboard or a
+screen reader, so every item's action menu also has "Move to…", which opens
+a destination picker. Drops use a custom MIME type so a row-drag is never
+confused with a file dragged in from the desktop, which the upload dropzone
+handles. Moves are not optimistic: the item leaves the current view entirely
+and the server can legitimately refuse the move.
+
 **Navigation lives in the URL** (`/files/[id]`), so the back button and
 pasted links both work.
 
@@ -267,42 +285,6 @@ never the only carrier of meaning — the shared badge and file-type icons
 differ by shape and text too.
 
 ---
-
-## 4. What I cut, and why
-
-**Quarantine bucket** — the brief's stretch goal of staging uploads in a
-separate bucket and promoting them after a simulated validation job. Cut by
-agreement early: it is the most infrastructure for the least demonstrated
-insight, since the interesting part (presigned flow, server-side
-verification) is already covered by the main upload path.
-
-**Thumbnail generation** — planned as a BullMQ + Redis + `sharp` worker, and
-not built. Worth stating the tension it exposes: the brief forbids the
-server receiving file bytes, so a server-side thumbnailer has to pull the
-object *back down* after `complete`. That is defensible (the constraint is
-about the upload path) but it is genuinely in tension, and in production I
-would move it to an S3-event-triggered Lambda so the API is not involved at
-all. The `thumbnailKey` column and `hasThumbnail` flag exist; nothing
-populates them.
-
-**Stale-upload sweeper** — a cron job clearing `PENDING` rows abandoned
-mid-upload. Not built. The consequence is real and worth naming: a client
-that starts an upload and closes the tab leaves a PENDING row forever, and a
-rejected oversized upload leaves an orphaned object in storage. Neither is
-user-visible (PENDING rows never appear in listings) but storage grows.
-
-**Redis-backed rate limiting on auth** — not built. nginx rate-limits per IP,
-which does not stop distributed credential stuffing. This is the gap I would
-close first.
-
-**Automated end-to-end tests** — the flows were verified by driving a real
-browser (sign up → create folder → upload → share), but that verification is
-not committed as a test suite. Two bugs were found this way that no API test
-could have caught, which is exactly the argument for having them.
-
-**Also not done:** file/folder *move* — left out deliberately, since the
-brief says it is the live extension exercise, and the adjacency-list schema
-was chosen specifically to make it a one-column update.
 
 ### Test coverage, honestly
 

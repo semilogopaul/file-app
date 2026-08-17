@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { activeShareLinksInclude, toFileResponse } from '../files/file.mapper';
 import type { Folder } from '../../generated/prisma/client';
@@ -74,27 +78,100 @@ export class FoldersService {
     return this.listContents({ userId, folder });
   }
 
-  async rename({
+  /**
+   * Rename and/or move a folder.
+   *
+   * Moving is a single parent_id update - the payoff of the adjacency-list
+   * design. A materialised path would have required rewriting every
+   * descendant's path here.
+   */
+  async update({
     userId,
     folderId,
     name,
+    parentId,
+    isMove,
   }: {
     userId: string;
     folderId: string;
-    name: string;
+    name?: string;
+    parentId?: string | null;
+    isMove: boolean;
   }): Promise<FolderResponseDto> {
-    // ownerId is part of the WHERE clause, so renaming another user's
-    // folder updates zero rows rather than succeeding.
-    const { count } = await this.prisma.folder.updateMany({
-      where: { id: folderId, ownerId: userId, deletedAt: null },
-      data: { name },
-    });
+    // Confirms ownership before anything else; throws 404 otherwise.
+    await this.getOwnedFolder({ userId, folderId });
 
-    if (count === 0) {
-      throw new NotFoundException('Folder not found');
+    if (isMove) {
+      await this.assertMoveIsLegal({
+        userId,
+        folderId,
+        parentId: parentId ?? null,
+      });
     }
 
+    await this.prisma.folder.updateMany({
+      where: { id: folderId, ownerId: userId, deletedAt: null },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(isMove ? { parentId: parentId ?? null } : {}),
+      },
+    });
+
     return toFolderResponse(await this.getOwnedFolder({ userId, folderId }));
+  }
+
+  /**
+   * A folder cannot be moved into itself or into any of its own
+   * descendants - that would detach the subtree from the root and create a
+   * cycle that the recursive CTEs would loop on forever.
+   *
+   * The check is one recursive query rather than walking parents in
+   * application code.
+   */
+  private async assertMoveIsLegal({
+    userId,
+    folderId,
+    parentId,
+  }: {
+    userId: string;
+    folderId: string;
+    parentId: string | null;
+  }): Promise<void> {
+    // Moving to the root is always safe.
+    if (parentId === null) {
+      return;
+    }
+
+    if (parentId === folderId) {
+      throw new BadRequestException('A folder cannot be moved into itself');
+    }
+
+    // The destination must exist and belong to this user.
+    await this.getOwnedFolder({ userId, folderId: parentId });
+
+    const rows = await this.prisma.$queryRaw<{ is_descendant: boolean }[]>`
+      WITH RECURSIVE subtree AS (
+        SELECT id
+          FROM folders
+         WHERE id = ${folderId}::uuid
+           AND owner_id = ${userId}::uuid
+           AND deleted_at IS NULL
+        UNION ALL
+        SELECT child.id
+          FROM folders child
+          JOIN subtree ON child.parent_id = subtree.id
+         WHERE child.deleted_at IS NULL
+      )
+      SELECT EXISTS (
+        SELECT 1 FROM subtree WHERE id = ${parentId}::uuid
+      ) AS is_descendant
+    `;
+
+    if (rows[0]?.is_descendant) {
+      throw new BadRequestException(
+        'A folder cannot be moved into one of its own subfolders',
+      );
+    }
   }
 
   /**

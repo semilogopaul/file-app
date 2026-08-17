@@ -19,6 +19,7 @@ import {
   useDeleteItem,
   useFolderContents,
   useRenameFile,
+  useMoveItem,
   useRenameFolder,
 } from "../hooks/use-folder-contents";
 import { filesService } from "../services/files.service";
@@ -26,11 +27,12 @@ import { FileIcon, FolderIcon } from "./file-type-icon";
 import { InlineRename } from "./inline-rename";
 import { ItemActions } from "./item-actions";
 import { ConfirmDialog } from "./confirm-dialog";
+import { MoveDialog } from "./move-dialog";
 import { ShareButton } from "@/modules/sharing/components/share-button";
 import type { FileItem } from "../types";
 
 type ViewMode = "grid" | "list";
-type PendingDelete = { id: string; name: string; kind: "file" | "folder" };
+type PendingItem = { id: string; name: string; kind: "file" | "folder" };
 
 export function FileBrowser({ folderId }: { readonly folderId: string | null }) {
   const router = useRouter();
@@ -39,12 +41,16 @@ export function FileBrowser({ folderId }: { readonly folderId: string | null }) 
   const [view, setView] = useState<ViewMode>("grid");
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingItem | null>(null);
+  const [pendingMove, setPendingMove] = useState<PendingItem | null>(null);
+  // Which folder row a drag is currently hovering, for the drop highlight.
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   const createFolder = useCreateFolder(folderId);
   const renameFolder = useRenameFolder(folderId);
   const renameFile = useRenameFile(folderId);
   const deleteItem = useDeleteItem();
+  const moveItem = useMoveItem();
 
   if (isPending) {
     return <BrowserSkeleton />;
@@ -91,6 +97,14 @@ export function FileBrowser({ folderId }: { readonly folderId: string | null }) 
     } catch {
       // Non-fatal: the row stays put and the user can retry.
     }
+  };
+
+  /** Applies a move and closes whichever affordance triggered it. */
+  const move = (item: PendingItem, destinationId: string | null) => {
+    moveItem.mutate(
+      { id: item.id, kind: item.kind, destinationId },
+      { onSettled: () => setPendingMove(null) },
+    );
   };
 
   return (
@@ -180,6 +194,22 @@ export function FileBrowser({ folderId }: { readonly folderId: string | null }) 
                   kind: "folder",
                 })
               }
+              onStartMove={() =>
+                setPendingMove({
+                  id: folder.id,
+                  name: folder.name,
+                  kind: "folder",
+                })
+              }
+              dragItem={{ id: folder.id, name: folder.name, kind: "folder" }}
+              isDropTarget={dropTargetId === folder.id}
+              onDropItem={(dragged) => {
+                setDropTargetId(null);
+                // Dropping a folder onto itself is a no-op, not an error.
+                if (dragged.id !== folder.id) move(dragged, folder.id);
+              }}
+              onDragOverItem={() => setDropTargetId(folder.id)}
+              onDragLeaveItem={() => setDropTargetId(null)}
             />
           ))}
 
@@ -202,10 +232,26 @@ export function FileBrowser({ folderId }: { readonly folderId: string | null }) 
               onDelete={() =>
                 setPendingDelete({ id: file.id, name: file.name, kind: "file" })
               }
+              onStartMove={() =>
+                setPendingMove({ id: file.id, name: file.name, kind: "file" })
+              }
+              dragItem={{ id: file.id, name: file.name, kind: "file" }}
               extraActions={<ShareButton file={file} folderId={folderId} />}
             />
           ))}
         </div>
+      )}
+
+      {pendingMove && (
+        <MoveDialog
+          itemName={pendingMove.name}
+          itemId={pendingMove.id}
+          itemKind={pendingMove.kind}
+          currentFolderId={folderId}
+          loading={moveItem.isPending}
+          onCancel={() => setPendingMove(null)}
+          onMove={(destinationId) => move(pendingMove, destinationId)}
+        />
       )}
 
       {pendingDelete && (
@@ -315,6 +361,12 @@ function ViewToggle({
   );
 }
 
+interface DragItem {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: "file" | "folder";
+}
+
 interface ItemCardProps {
   readonly view: ViewMode;
   readonly icon: React.ReactNode;
@@ -328,8 +380,20 @@ interface ItemCardProps {
   readonly onRename: (name: string) => void;
   readonly onCancelRename: () => void;
   readonly onDelete: () => void;
+  readonly onStartMove: () => void;
   readonly extraActions?: React.ReactNode;
+  /** What this row represents when dragged. */
+  readonly dragItem: DragItem;
+  /** Folders only: accept drops. */
+  readonly isDropTarget?: boolean;
+  readonly onDropItem?: (dragged: DragItem) => void;
+  readonly onDragOverItem?: () => void;
+  readonly onDragLeaveItem?: () => void;
 }
+
+/** Custom MIME type so we only accept our own rows, not files from the OS
+ *  (which the upload dropzone handles) or text from another app. */
+const DRAG_TYPE = "application/x-istore-item";
 
 function ItemCard({
   view,
@@ -344,10 +408,43 @@ function ItemCard({
   onRename,
   onCancelRename,
   onDelete,
+  onStartMove,
   extraActions,
+  dragItem,
+  isDropTarget = false,
+  onDropItem,
+  onDragOverItem,
+  onDragLeaveItem,
 }: ItemCardProps) {
+  const acceptsDrop = Boolean(onDropItem);
+
   return (
     <div
+      draggable={!isRenaming && !disabled}
+      onDragStart={(event) => {
+        event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragItem));
+        event.dataTransfer.effectAllowed = "move";
+      }}
+      onDragOver={(event) => {
+        if (!acceptsDrop || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
+        // Required, or the browser refuses the drop.
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        onDragOverItem?.();
+      }}
+      onDragLeave={() => acceptsDrop && onDragLeaveItem?.()}
+      onDrop={(event) => {
+        if (!acceptsDrop) return;
+        const payload = event.dataTransfer.getData(DRAG_TYPE);
+        if (!payload) return;
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          onDropItem?.(JSON.parse(payload) as DragItem);
+        } catch {
+          // A malformed payload is not something the user can act on.
+        }
+      }}
       // A real button would swallow the nested action buttons, so this is a
       // div with an explicit role, tabIndex and key handling instead - which
       // keeps it reachable and operable from the keyboard.
@@ -372,6 +469,9 @@ function ItemCard({
           ? "rounded-xl border border-border p-4 hover:border-brand-300"
           : "px-4 py-3 hover:bg-surface-muted",
         disabled && "cursor-default opacity-60",
+        // Ring rather than a border change, so the row does not shift by a
+        // pixel as you drag across it.
+        isDropTarget && "ring-2 ring-brand-500 ring-offset-1 bg-brand-surface",
       )}
     >
       <span className="shrink-0">{icon}</span>
@@ -401,6 +501,8 @@ function ItemCard({
             label={name}
             actions={[
               { label: "Rename", onSelect: onStartRename },
+              // Keyboard-reachable equivalent of dragging the row.
+              { label: "Move to…", onSelect: onStartMove },
               { label: "Delete", onSelect: onDelete, destructive: true },
             ]}
           />

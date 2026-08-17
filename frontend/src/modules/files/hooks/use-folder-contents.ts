@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { filesService } from "../services/files.service";
-import type { FolderContents, FolderItem } from "../types";
+import type { FileItem, FolderContents, FolderItem } from "../types";
 
 export const fileKeys = {
   all: ["files"] as const,
@@ -171,6 +171,45 @@ export function useDeleteItem() {
 
     onSuccess: () => {
       // A folder delete cascades, so sibling caches may now be stale too.
+      void queryClient.invalidateQueries({ queryKey: fileKeys.all });
+    },
+  });
+}
+
+/**
+ * Moves a file or folder into another folder (null = the owner's root).
+ *
+ * Not optimistic: the item leaves the current view entirely, and the server
+ * can legitimately refuse (moving a folder into its own subtree). Showing it
+ * vanish and then reappear would be worse than a brief wait.
+ */
+export function useMoveItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    // The union is stated explicitly: moving a file resolves to a FileItem
+    // and a folder to a FolderItem, which TypeScript cannot infer from the
+    // conditional below.
+    FileItem | FolderItem,
+    Error,
+    { id: string; kind: "file" | "folder"; destinationId: string | null }
+  >({
+    mutationFn: ({
+      id,
+      kind,
+      destinationId,
+    }: {
+      id: string;
+      kind: "file" | "folder";
+      destinationId: string | null;
+    }) =>
+      kind === "file"
+        ? filesService.moveFile(id, destinationId)
+        : filesService.moveFolder(id, destinationId),
+
+    onSuccess: () => {
+      // Both the source and destination listings changed, and a folder move
+      // shifts a whole subtree, so invalidate the tree rather than guess.
       void queryClient.invalidateQueries({ queryKey: fileKeys.all });
     },
   });

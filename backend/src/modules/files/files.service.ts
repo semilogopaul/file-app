@@ -21,20 +21,46 @@ export class FilesService {
     return toFileResponse(await this.getOwnedFile({ userId, fileId }));
   }
 
-  async rename({
+  /**
+   * Rename and/or move a file.
+   *
+   * Only metadata changes - the storage key is immutable, so a move never
+   * touches object storage, never re-uploads bytes, and never invalidates
+   * an existing share link.
+   */
+  async update({
     userId,
     fileId,
     name,
+    folderId,
+    isMove,
   }: {
     userId: string;
     fileId: string;
-    name: string;
+    name?: string;
+    folderId?: string | null;
+    isMove: boolean;
   }): Promise<FileResponseDto> {
-    // Only the display name changes - the storage key is immutable, so a
-    // rename never has to touch object storage or invalidate a share link.
+    if (isMove && folderId) {
+      // The destination must exist and belong to this user, or a guessed id
+      // would let someone file their upload into another account's folder.
+      const folder = await this.prisma.folder.findFirst({
+        where: { id: folderId, ownerId: userId, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (!folder) {
+        throw new NotFoundException('Destination folder not found');
+      }
+    }
+
+    // ownerId in the WHERE clause, so another user's file updates zero rows.
     const { count } = await this.prisma.file.updateMany({
       where: { id: fileId, ownerId: userId, deletedAt: null },
-      data: { name },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(isMove ? { folderId: folderId ?? null } : {}),
+      },
     });
 
     if (count === 0) {
