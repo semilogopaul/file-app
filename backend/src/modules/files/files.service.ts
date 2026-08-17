@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import { toFileResponse } from './file.mapper';
+import { activeShareLinksInclude, toFileResponse } from './file.mapper';
 import type { FileResponseDto } from '../uploads/dto/upload-response.dto';
 
 @Injectable()
@@ -120,6 +120,7 @@ export class FilesService {
         deletedAt: null,
         status: 'READY',
       },
+      include: activeShareLinksInclude(),
     });
 
     if (!file) {

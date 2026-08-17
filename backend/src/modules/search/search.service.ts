@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { toFileResponse } from '../files/file.mapper';
+import { activeShareLinksInclude, toFileResponse } from '../files/file.mapper';
 import type { FileResponseDto } from '../uploads/dto/upload-response.dto';
 
 const MAX_RESULTS = 50;
@@ -37,6 +37,7 @@ export class SearchService {
         status: 'READY',
         name: { contains: escapeLikeWildcards(term), mode: 'insensitive' },
       },
+      include: activeShareLinksInclude(),
       orderBy: { updatedAt: 'desc' },
       // Bounded so a one-character query cannot pull an entire account into
       // memory. The UI tells the user when results were truncated.

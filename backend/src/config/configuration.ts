@@ -35,6 +35,14 @@ export interface AppConfig {
     readonly maxBytes: number;
     readonly allowedContentTypes: readonly string[];
   };
+  readonly sharing: {
+    /** How long a newly minted share link stays valid. */
+    readonly tokenTtlSeconds: number;
+  };
+  readonly app: {
+    /** Public origin the frontend is served from; used to build share URLs. */
+    readonly publicUrl: string;
+  };
 }
 
 /** Images and PDFs only, per the file-type restriction requirement. */
@@ -83,5 +91,17 @@ export default (): AppConfig => ({
   uploads: {
     maxBytes: parseInt(process.env.UPLOAD_MAX_BYTES ?? '10485760', 10),
     allowedContentTypes: DEFAULT_ALLOWED_CONTENT_TYPES,
+  },
+  sharing: {
+    tokenTtlSeconds: parseInt(
+      process.env.SHARE_TOKEN_TTL_SECONDS ?? '86400',
+      10,
+    ),
+  },
+  app: {
+    publicUrl: (process.env.APP_PUBLIC_URL ?? 'https://localhost').replace(
+      /\/+$/,
+      '',
+    ),
   },
 });

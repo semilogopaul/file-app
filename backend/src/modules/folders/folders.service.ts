@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { toFileResponse } from '../files/file.mapper';
+import { activeShareLinksInclude, toFileResponse } from '../files/file.mapper';
 import type { Folder } from '../../generated/prisma/client';
 import type {
   BreadcrumbDto,
@@ -185,6 +185,7 @@ export class FoldersService {
           deletedAt: null,
           status: 'READY',
         },
+        include: activeShareLinksInclude(),
         orderBy: { name: 'asc' },
       }),
       this.sumSubtree({ userId, folderId: parentId }),

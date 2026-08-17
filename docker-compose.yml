@@ -179,6 +179,7 @@ services:
       STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-fileapp-access-key}
       STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-fileapp-secret-key}
       STORAGE_BUCKET: ${STORAGE_BUCKET:-file-app}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-https://localhost}
     networks:
       - internal
     read_only: true

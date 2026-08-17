@@ -23,6 +23,8 @@ export class FileResponseDto {
   readonly status!: FileStatus;
   readonly folderId!: string | null;
   readonly hasThumbnail!: boolean;
+  /** Drives the UI's "already shared" indicator. */
+  readonly hasActiveShare!: boolean;
   readonly createdAt!: Date;
   readonly updatedAt!: Date;
 }

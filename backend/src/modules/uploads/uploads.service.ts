@@ -138,7 +138,10 @@ export class UploadsService {
     }
 
     if (file.status === 'READY') {
-      return toFileResponse(file);
+      // A file reached through /uploads/:id/complete has just been created,
+      // so it cannot have share links yet. Stated explicitly rather than
+      // loaded, since the mapper requires the relation.
+      return toFileResponse({ ...file, shareLinks: [] });
     }
 
     const stored = await this.storage.statObject(file.storageKey);
@@ -173,7 +176,7 @@ export class UploadsService {
       },
     });
 
-    return toFileResponse(updated);
+    return toFileResponse({ ...updated, shareLinks: [] });
   }
 
   /**

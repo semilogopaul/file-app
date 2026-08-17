@@ -13,6 +13,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { FilesModule } from './modules/files/files.module';
 import { FoldersModule } from './modules/folders/folders.module';
 import { SearchModule } from './modules/search/search.module';
+import { SharesModule } from './modules/shares/shares.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -46,6 +47,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     FilesModule,
     FoldersModule,
     SearchModule,
+    SharesModule,
   ],
   providers: [
     // Authenticate every route by default; @Public() is the explicit

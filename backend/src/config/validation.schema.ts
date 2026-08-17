@@ -54,4 +54,17 @@ export const validationSchema = Joi.object({
     .min(1)
     .max(104857600)
     .default(10485760),
+
+  // --- Sharing ---
+  // Configurable per the brief. Bounded to 30 days: a share link is an
+  // unauthenticated bearer credential, so an unbounded lifetime would mean
+  // a leaked URL grants access forever.
+  SHARE_TOKEN_TTL_SECONDS: Joi.number()
+    .integer()
+    .min(60)
+    .max(2592000)
+    .default(86400),
+
+  // Public origin used to build shareable URLs handed to users.
+  APP_PUBLIC_URL: Joi.string().uri().default('https://localhost'),
 });
