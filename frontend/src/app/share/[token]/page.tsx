@@ -81,7 +81,7 @@ function SharedFileCard({ file }: { readonly file: SharedFile }) {
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-border bg-surface p-8 text-center">
-      <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50">
+      <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-surface">
         <FileIcon contentType={file.contentType} className="h-8 w-8" />
       </span>
 

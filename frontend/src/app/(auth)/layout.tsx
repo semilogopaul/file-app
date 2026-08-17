@@ -21,16 +21,15 @@ export default function AuthLayout({
 
       <aside
         aria-hidden="true"
-        className="relative hidden items-center justify-center overflow-hidden bg-brand-50 lg:flex"
+        className="relative hidden items-center justify-center overflow-hidden bg-brand-surface lg:flex"
       >
-        <div className="pointer-events-none absolute -right-24 top-1/4 h-72 w-72 rounded-full bg-brand-200/50 blur-3xl" />
         <div className="relative flex flex-col items-center gap-8 px-12 text-center">
           <HeroIllustration className="w-full max-w-md" />
           <div>
-            <p className="text-lg font-medium text-ink-800">
+            <p className="text-lg font-medium text-foreground">
               Files that go straight to storage
             </p>
-            <p className="mt-2 max-w-sm text-sm text-ink-600">
+            <p className="mt-2 max-w-sm text-sm text-brand-on-surface-muted">
               Uploads never pass through our servers, and every file stays
               scoped to your account alone.
             </p>

@@ -55,6 +55,19 @@
   --muted-foreground: var(--ink-500);
   --border: var(--ink-200);
 
+  /* Semantic pink-tinted surface.
+     These exist because the raw --brand-* scale is theme-INVARIANT: a light
+     pink stays light in dark mode. Pairing it with --foreground (which does
+     flip to near-white) produced near-white text on near-white pink -
+     invisible. Anything tinted pink must use these tokens so the surface and
+     the text on it flip together. */
+  --brand-surface: var(--brand-50);
+  --brand-surface-strong: var(--brand-100);
+  --brand-border: var(--brand-200);
+  --brand-on-surface: var(--brand-700);
+  /* Body copy sitting on a pink surface. */
+  --brand-on-surface-muted: var(--ink-600);
+
   --radius: 0.75rem;
 }
 
@@ -81,6 +94,12 @@
   --color-ink-800: var(--ink-800);
   --color-ink-900: var(--ink-900);
 
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-surface-strong: var(--brand-surface-strong);
+  --color-brand-border: var(--brand-border);
+  --color-brand-on-surface: var(--brand-on-surface);
+  --color-brand-on-surface-muted: var(--brand-on-surface-muted);
+
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
@@ -105,6 +124,16 @@
     --foreground: #f6f4f7;
     --muted-foreground: #a3a0a7;
     --border: #322f38;
+
+    /* The pink surface becomes a dark, pink-tinted panel rather than
+       staying pale - and the text on it flips to a light pink that reads
+       against it. Without this pairing the CTA band rendered as invisible
+       white-on-white. */
+    --brand-surface: #2a1b23;
+    --brand-surface-strong: #3a2430;
+    --brand-border: #4a2e3c;
+    --brand-on-surface: var(--brand-300);
+    --brand-on-surface-muted: #cfc6cb;
   }
 }
 

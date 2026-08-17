@@ -7,10 +7,14 @@ interface LogoProps {
   readonly markOnly?: boolean;
 }
 
+// `iGap` is a kern, not tracking: the "i" is much narrower than the round
+// "s" that follows, so uniform tracking alone still leaves that one pair
+// looking cramped. A touch of extra space on just that join evens out the
+// rhythm - the micro adjustment tracking cannot make.
 const SIZES = {
-  sm: { text: "text-lg", mark: "h-6 w-6", dot: "h-1.5 w-1.5" },
-  md: { text: "text-2xl", mark: "h-8 w-8", dot: "h-2 w-2" },
-  lg: { text: "text-4xl", mark: "h-12 w-12", dot: "h-3 w-3" },
+  sm: { text: "text-lg", mark: "h-6 w-6", iGap: "mr-[0.07em]" },
+  md: { text: "text-2xl", mark: "h-8 w-8", iGap: "mr-[0.07em]" },
+  lg: { text: "text-4xl", mark: "h-12 w-12", iGap: "mr-[0.075em]" },
 } as const;
 
 /**
@@ -42,14 +46,18 @@ export function Logo({ className, size = "md", markOnly = false }: LogoProps) {
   return (
     <span
       className={cn(
-        "font-logo font-semibold tracking-[-0.03em] select-none",
+        // Slightly OPEN tracking, not tight. SF Display is drawn compactly
+        // at UI sizes and the narrow "i" collides with the "s" at default
+        // spacing; opening it up is what keeps the mark legible when it
+        // shrinks into a header or a favicon.
+        "font-logo font-semibold tracking-[0.04em] select-none",
         s.text,
         className,
       )}
     >
       {/* aria-hidden on the pieces + a label on the wrapper, so screen
           readers announce "istore" once rather than spelling it out. */}
-      <span aria-hidden="true" className="text-brand-500">
+      <span aria-hidden="true" className={cn("text-brand-500", s.iGap)}>
         i
       </span>
       <span aria-hidden="true" className="text-foreground">

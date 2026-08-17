@@ -84,7 +84,7 @@ export function ShareButton({
         className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:opacity-50",
           file.hasActiveShare
-            ? "text-brand-600 hover:bg-brand-50"
+            ? "text-brand-600 hover:bg-brand-surface"
             : "text-ink-500 hover:bg-surface-muted hover:text-foreground",
         )}
       >

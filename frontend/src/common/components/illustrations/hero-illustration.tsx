@@ -18,8 +18,8 @@ export function HeroIllustration({ className }: { readonly className?: string })
     >
       {/* Soft field behind the composition, giving the scene a centre of
           gravity without a drop shadow. */}
-      <ellipse cx="240" cy="300" rx="180" ry="46" className="fill-brand-100/70" />
-      <circle cx="240" cy="176" r="132" className="fill-brand-50" />
+      <ellipse cx="240" cy="300" rx="180" ry="46" className="fill-brand-surface-strong/80" />
+      <circle cx="240" cy="176" r="132" className="fill-brand-surface" />
 
       {/* Orbit arc - dashed so it reads as motion rather than structure. */}
       <ellipse
@@ -49,7 +49,7 @@ export function HeroIllustration({ className }: { readonly className?: string })
           width="184"
           height="132"
           rx="20"
-          className="fill-surface stroke-ink-200"
+          className="fill-surface stroke-border"
           strokeWidth="2"
         />
         {/* Lid, offset to suggest it is open. */}
@@ -106,7 +106,7 @@ function Doc({ accent }: { readonly accent: string }) {
         width="64"
         height="82"
         rx="10"
-        className="fill-surface stroke-ink-200"
+        className="fill-surface stroke-border"
         strokeWidth="2"
       />
       <rect x="12" y="16" width="40" height="6" rx="3" className={accent} />

@@ -1,0 +1,22 @@
+#!/bin/sh
+# Slower, higher-confidence gate before code leaves the machine.
+#
+# Deliberately NOT here: the backend e2e suite and any browser test. Both
+# need live Postgres/MinIO, which would make pushing depend on infra being
+# up and break offline work. Those belong in CI, where the services can be
+# provisioned as containers.
+#
+# Bypass with: git push --no-verify
+set -e
+
+printf '→ backend: test\n'
+( cd backend && npm run --silent test )
+
+printf '→ frontend: test\n'
+( cd frontend && npm run --silent test )
+
+printf '→ backend: build\n'
+( cd backend && npm run --silent build )
+
+printf '→ frontend: build\n'
+( cd frontend && npm run --silent build )

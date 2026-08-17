@@ -85,7 +85,7 @@ export function ItemActions({
                 "flex w-full items-center px-3 py-2 text-left text-sm transition-colors",
                 action.destructive
                   ? "text-danger hover:bg-danger/10"
-                  : "text-ink-700 hover:bg-surface-muted dark:text-ink-200",
+                  : "text-foreground hover:bg-surface-muted",
               )}
             >
               {action.label}

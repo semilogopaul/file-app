@@ -254,7 +254,7 @@ function Breadcrumbs({
           const isCurrent = index === breadcrumbs.length - 1;
           return (
             <li key={crumb.id} className="flex items-center gap-1">
-              <span aria-hidden="true" className="text-ink-300">
+              <span aria-hidden="true" className="text-muted-foreground/60">
                 /
               </span>
               {isCurrent ? (
@@ -304,7 +304,7 @@ function ViewToggle({
           className={cn(
             "rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors",
             value === mode
-              ? "bg-brand-50 text-brand-700"
+              ? "bg-brand-surface text-brand-on-surface"
               : "text-ink-500 hover:text-foreground",
           )}
         >
@@ -413,7 +413,7 @@ function ItemCard({
 function SharedBadge() {
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-surface px-1.5 py-0.5 text-[10px] font-medium text-brand-700"
       // Colour alone would not convey this; the text does.
       title="This file has an active share link"
     >
@@ -438,7 +438,7 @@ function NewFolderRow({
   readonly onCancel: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-brand-300 bg-brand-50/40 p-4">
+    <div className="flex items-center gap-3 rounded-xl border border-brand-300 bg-brand-surface/50 p-4">
       <FolderIcon className="h-6 w-6 shrink-0" />
       <div className="min-w-0 flex-1">
         <InlineRename value="Untitled folder" onCommit={onCommit} onCancel={onCancel} />

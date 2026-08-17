@@ -1,0 +1,26 @@
+#!/bin/sh
+# Fast, static-only checks before a commit is written. Nothing here starts a
+# server, touches a database, or needs Docker, so it stays usable offline.
+#
+# Each app runs its OWN scripts from its OWN package.json - there is no root
+# package.json and no root node_modules. Git hooks are per-repository
+# (core.hooksPath holds a single value), so a shared hook that fans out is
+# the only arrangement that can run checks for both apps; installing husky
+# separately in each would have them overwrite each other's hooksPath and
+# one app's checks would silently stop running.
+#
+# Enable once per clone with:  make setup   (or: git config core.hooksPath .githooks)
+# Bypass with:                 git commit --no-verify
+set -e
+
+printf '→ backend: lint\n'
+( cd backend && npm run --silent lint:check )
+
+printf '→ frontend: lint\n'
+( cd frontend && npm run --silent lint )
+
+printf '→ backend: typecheck\n'
+( cd backend && npm run --silent typecheck )
+
+printf '→ frontend: typecheck\n'
+( cd frontend && npm run --silent typecheck )

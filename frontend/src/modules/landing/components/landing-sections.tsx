@@ -15,19 +15,10 @@ import {
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
-      {/* Ambient wash. Sits behind content and is pointer-transparent so it
-          can never intercept a click. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10"
-      >
-        <div className="absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-brand-100/60 blur-3xl" />
-      </div>
-
+    <section className="relative">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 py-16 sm:px-8 lg:grid-cols-2 lg:gap-8 lg:py-24">
         <div className="flex flex-col items-start gap-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
+          <span className="inline-flex items-center gap-2 rounded-full border border-brand-border bg-brand-surface px-3 py-1 text-xs font-medium text-brand-on-surface">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
             Files go straight to storage — never through our servers
           </span>
@@ -118,7 +109,7 @@ export function Features() {
               key={title}
               className="group rounded-2xl border border-border bg-surface p-6 transition-colors hover:border-brand-300"
             >
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600 transition-colors group-hover:bg-brand-100">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-brand-surface text-brand-on-surface transition-colors group-hover:bg-brand-surface-strong">
                 <Icon className="h-5 w-5" />
               </span>
               <h3 className="mt-4 text-base font-semibold text-foreground">
@@ -221,7 +212,7 @@ export function Security() {
               key={item}
               className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4"
             >
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-surface-strong text-brand-on-surface">
                 <svg
                   width="12"
                   height="12"
@@ -238,7 +229,7 @@ export function Security() {
                   />
                 </svg>
               </span>
-              <p className="text-sm leading-relaxed text-ink-700 dark:text-ink-300">
+              <p className="text-sm leading-relaxed text-foreground">
                 {item}
               </p>
             </li>
@@ -254,18 +245,14 @@ export function Security() {
 export function CallToAction() {
   return (
     <section className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 lg:py-24">
-      <div className="relative overflow-hidden rounded-3xl border border-brand-200 bg-brand-50 px-6 py-14 text-center sm:px-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-brand-200/50 blur-2xl"
-        />
-        <h2 className="relative text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+      <div className="overflow-hidden rounded-3xl border border-brand-border bg-brand-surface px-6 py-14 text-center sm:px-12">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           Start storing in under a minute
         </h2>
-        <p className="relative mx-auto mt-3 max-w-md text-sm text-ink-600 dark:text-ink-300">
+        <p className="mx-auto mt-3 max-w-md text-sm text-brand-on-surface-muted">
           Free to create an account. No card, no trial timer, no upsell.
         </p>
-        <div className="relative mt-7 flex justify-center">
+        <div className="mt-7 flex justify-center">
           <Link href="/register">
             <Button size="lg">Create your account</Button>
           </Link>

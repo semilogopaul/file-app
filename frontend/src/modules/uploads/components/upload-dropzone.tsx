@@ -63,7 +63,7 @@ export function UploadDropzone({ folderId }: { readonly folderId: string | null 
         className={cn(
           "rounded-xl border-2 border-dashed p-6 text-center transition-colors",
           isDragging
-            ? "border-brand-500 bg-brand-50"
+            ? "border-brand-500 bg-brand-surface"
             : "border-border bg-surface-muted/40 hover:border-brand-300",
         )}
       >
