@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -6,10 +7,12 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Query,
 } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { FilesService } from './files.service';
+import { RenameDto } from '../folders/dto/create-folder.dto';
 import type { FileResponseDto } from '../uploads/dto/upload-response.dto';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 
@@ -40,6 +43,19 @@ export class FilesController {
       userId: user.id,
       fileId: id,
       inline: inline === 'true',
+    });
+  }
+
+  @Patch(':id')
+  rename(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RenameDto,
+  ): Promise<FileResponseDto> {
+    return this.filesService.rename({
+      userId: user.id,
+      fileId: id,
+      name: dto.name,
     });
   }
 

@@ -11,6 +11,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { FilesModule } from './modules/files/files.module';
+import { FoldersModule } from './modules/folders/folders.module';
+import { SearchModule } from './modules/search/search.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -42,6 +44,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AuthModule,
     UploadsModule,
     FilesModule,
+    FoldersModule,
+    SearchModule,
   ],
   providers: [
     // Authenticate every route by default; @Public() is the explicit

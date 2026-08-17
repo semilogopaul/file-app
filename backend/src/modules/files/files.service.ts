@@ -21,6 +21,29 @@ export class FilesService {
     return toFileResponse(await this.getOwnedFile({ userId, fileId }));
   }
 
+  async rename({
+    userId,
+    fileId,
+    name,
+  }: {
+    userId: string;
+    fileId: string;
+    name: string;
+  }): Promise<FileResponseDto> {
+    // Only the display name changes - the storage key is immutable, so a
+    // rename never has to touch object storage or invalidate a share link.
+    const { count } = await this.prisma.file.updateMany({
+      where: { id: fileId, ownerId: userId, deletedAt: null },
+      data: { name },
+    });
+
+    if (count === 0) {
+      throw new NotFoundException('File not found');
+    }
+
+    return toFileResponse(await this.getOwnedFile({ userId, fileId }));
+  }
+
   /**
    * Soft delete: the row is marked, the object stays in storage.
    *
