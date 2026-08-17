@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { cn } from "@/common/utils/cn";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -9,6 +9,9 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly size?: Size;
   readonly loading?: boolean;
   readonly children?: ReactNode;
+  /** React 19 passes ref as an ordinary prop to function components, so no
+   *  forwardRef wrapper is needed - it only has to be declared. */
+  readonly ref?: Ref<HTMLButtonElement>;
 }
 
 const VARIANTS: Record<Variant, string> = {

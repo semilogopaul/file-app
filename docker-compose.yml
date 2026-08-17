@@ -174,8 +174,11 @@ services:
       # Internal address for the API's own calls (HEAD after upload)...
       STORAGE_ENDPOINT: http://minio:9000
       # ...and the browser-reachable address baked into presigned URLs.
-      # SigV4 signs the host, so these cannot be collapsed into one value.
-      STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-http://localhost:9000}
+      # Points at nginx, not at MinIO directly: the browser uploads from an
+      # HTTPS page under a `connect-src 'self'` CSP, so a cross-origin
+      # http://minio:9000 URL is blocked twice over. nginx proxies the
+      # bucket path through unchanged, keeping the SigV4 signature valid.
+      STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-https://localhost}
       STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-fileapp-access-key}
       STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-fileapp-secret-key}
       STORAGE_BUCKET: ${STORAGE_BUCKET:-file-app}
