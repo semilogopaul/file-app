@@ -57,11 +57,14 @@ RUN npm run build
 # when more than one replica boots at once).
 FROM base AS migrator
 
-COPY package.json package-lock.json prisma.config.ts ./
-COPY --from=dependencies /app/node_modules ./node_modules
-COPY prisma ./prisma
-
 # `node` (uid 1000) ships with the official image - no need to create one.
+# Everything is chowned to it because the Prisma CLI writes into
+# node_modules/@prisma/engines at startup; copied-as-root files would make
+# it fail with a permissions error the moment it runs as a non-root user.
+COPY --chown=node:node package.json package-lock.json prisma.config.ts ./
+COPY --from=dependencies --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node prisma ./prisma
+
 USER node
 
 CMD ["npx", "prisma", "migrate", "deploy"]
