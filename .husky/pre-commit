@@ -1,0 +1,18 @@
+# Fast feedback before the commit is written: static analysis only.
+# Nothing here starts a server, touches a database, or needs Docker running,
+# so it stays usable offline and on a plane.
+#
+#   lint      - eslint over both apps (backend uses the non-fixing
+#               `lint:check` variant on purpose: a hook that silently
+#               rewrites files leaves unstaged changes behind and makes the
+#               commit you review differ from the commit you get)
+#   typecheck - `tsc --noEmit` over both apps. Catches cross-file type
+#               breakage that eslint alone cannot see.
+#
+# Bypass with `git commit --no-verify` when you genuinely need to (WIP
+# commits on a scratch branch, for example).
+echo "→ pre-commit: lint"
+npm run lint
+
+echo "→ pre-commit: typecheck"
+npm run typecheck

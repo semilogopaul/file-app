@@ -1,3 +1,6 @@
+# Root-level dependencies (husky + task runner only; each app installs its own)
+/node_modules
+
 # Environment files - each app documents its required vars in .env.example
 .env
 .env.*
