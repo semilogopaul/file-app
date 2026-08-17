@@ -1,0 +1,154 @@
+# =============================================================================
+# Production Docker Compose stack for file-app.
+#
+# Topology:
+#
+#   internet --> nginx (TLS termination, security headers, rate limiting)
+#                  |-- /            --> frontend (Next.js standalone server)
+#                  '-- /api/*       --> backend  (NestJS, /api prefix stripped)
+#
+# `frontend` and `backend` only join the `internal` network - nginx is the
+# sole container with a route to the host's published ports (`edge`
+# network), and the sole public entry point into the system.
+#
+# First-time setup:
+#   cp backend/.env.example backend/.env.production
+#   cp frontend/.env.example frontend/.env.production
+#   ./nginx/certs/generate-self-signed.sh <domain>   # or mount real certs
+#
+# Run:
+#   docker compose build
+#   docker compose up -d
+#   docker compose logs -f
+# =============================================================================
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: file-app-frontend:latest
+    init: true # reap zombie processes / forward signals via Docker's bundled tini
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env.production
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      API_INTERNAL_URL: http://backend:4000
+    networks:
+      - internal
+    # Defense in depth beyond "not root": no writable filesystem at all
+    # except the two paths Next.js's standalone server actually needs.
+    # Long-form `volumes` (not the short `tmpfs:` list) so we can force a
+    # world-writable mode - a bare tmpfs mount is root-owned by default,
+    # which the non-root `nextjs` user can't write into.
+    read_only: true
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o1777
+      - type: tmpfs
+        target: /app/.next/cache
+        tmpfs:
+          mode: 0o1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: file-app-backend:latest
+    init: true
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.production
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+    networks:
+      - internal
+    read_only: true
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o1777
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    image: file-app-nginx:latest
+    init: true
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      # Real certs (or the throwaway ones from generate-self-signed.sh) are
+      # supplied at runtime, never baked into the image - see nginx/Dockerfile.
+      - ./nginx/certs:/etc/nginx/certs:ro
+      # Long-form tmpfs with an explicit mode: a bare tmpfs mount is
+      # root-owned by default, which the non-root `nginx` user can't
+      # mkdir/write into (nginx needs client_temp/proxy_temp under
+      # /var/cache/nginx, and its pid file under /var/run). 1777 matches
+      # the kernel's own default /tmp mode - world-writable, sticky bit so
+      # one user can't delete another's files.
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 0o1777
+      - type: tmpfs
+        target: /var/cache/nginx
+        tmpfs:
+          mode: 0o1777
+      - type: tmpfs
+        target: /var/run
+        tmpfs:
+          mode: 0o1777
+    networks:
+      - edge
+      - internal
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+networks:
+  # The only network with a route to the host's published ports.
+  edge:
+    driver: bridge
+  # frontend/backend live only here - never directly reachable from outside
+  # the Docker host, only through nginx. Add `internal: true` below for
+  # full isolation (no outbound internet either) once you've confirmed
+  # neither service needs external calls (third-party APIs, a hosted DB,
+  # etc.) - left off by default so that isn't a surprise footgun.
+  internal:
+    driver: bridge

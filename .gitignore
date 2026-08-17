@@ -1,0 +1,15 @@
+# Environment files - each app documents its required vars in .env.example
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# TLS material - generated locally or mounted from a secrets manager, never committed
+nginx/certs/*.pem
+nginx/certs/*.key
+nginx/certs/*.crt
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/
