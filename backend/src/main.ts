@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import type { AppConfig } from './config/configuration';
@@ -13,6 +14,9 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(PinoLogger));
 
   app.use(helmet());
+  // Populates request.cookies, which the JWT strategy reads the session
+  // token from.
+  app.use(cookieParser());
 
   const configService = app.get(ConfigService<AppConfig, true>);
   const corsOrigins = configService.get('cors.origins', { infer: true });
