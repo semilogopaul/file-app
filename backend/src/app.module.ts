@@ -9,6 +9,8 @@ import { validationSchema } from './config/validation.schema';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
+import { FilesModule } from './modules/files/files.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -38,6 +40,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     // Feature modules register here.
     HealthModule,
     AuthModule,
+    UploadsModule,
+    FilesModule,
   ],
   providers: [
     // Authenticate every route by default; @Public() is the explicit

@@ -32,4 +32,26 @@ export const validationSchema = Joi.object({
       'string.pattern.base':
         'JWT_EXPIRES_IN must look like 30m, 24h or 7d (number followed by s/m/h/d/w/y)',
     }),
+
+  // --- Object storage (MinIO locally, any S3-compatible service in prod) ---
+  STORAGE_ENDPOINT: Joi.string().uri().required(),
+  // Optional: falls back to STORAGE_ENDPOINT when the API and the browser
+  // reach storage at the same address (true for real S3, false in Docker).
+  STORAGE_PUBLIC_ENDPOINT: Joi.string().uri(),
+  STORAGE_REGION: Joi.string().default('us-east-1'),
+  STORAGE_ACCESS_KEY: Joi.string().required(),
+  STORAGE_SECRET_KEY: Joi.string().required(),
+  STORAGE_BUCKET: Joi.string().required(),
+  STORAGE_FORCE_PATH_STYLE: Joi.boolean().default(true),
+  STORAGE_UPLOAD_URL_TTL_SECONDS: Joi.number().integer().min(60).default(900),
+  STORAGE_DOWNLOAD_URL_TTL_SECONDS: Joi.number().integer().min(30).default(300),
+
+  // --- Uploads ---
+  // 10MB by default, per the brief. Capped at 100MB so a typo cannot
+  // accidentally allow unbounded uploads.
+  UPLOAD_MAX_BYTES: Joi.number()
+    .integer()
+    .min(1)
+    .max(104857600)
+    .default(10485760),
 });
