@@ -1,0 +1,161 @@
+// Prisma 7: the datasource URL lives in prisma.config.ts, not here.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+
+  // Prisma 7's generator defaults to ESM, which emits `import.meta.url`.
+  // NestJS compiles to CommonJS, and Node refuses a file that mixes
+  // `import.meta` with `exports`. Pinning the format keeps the generated
+  // client loadable from our CJS build.
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// User
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String @id @default(uuid()) @db.Uuid
+  // Stored lower-cased by the service layer so uniqueness is genuinely
+  // case-insensitive without needing citext.
+  email        String @unique
+  passwordHash String @map("password_hash")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  folders Folder[]
+  files   File[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Folder - adjacency list (parentId), not materialised path.
+//
+// Chosen deliberately: a materialised path makes subtree reads cheap but
+// turns *moving* a folder into a subtree-wide path rewrite. An adjacency
+// list makes a move a single-column update, and Postgres recursive CTEs
+// handle the subtree reads (cascade soft-delete, size rollup) in one
+// statement. Move is the operation most likely to be extended later.
+//
+// Duplicate names within the same parent are allowed, matching Google
+// Drive / Dropbox behaviour.
+// ---------------------------------------------------------------------------
+
+model Folder {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  ownerId  String  @map("owner_id") @db.Uuid
+  // null = a root-level folder for this owner.
+  parentId String? @map("parent_id") @db.Uuid
+
+  // Soft delete. Non-null means deleted; every listing query filters on
+  // `deletedAt: null`. Propagated to descendants by a recursive CTE.
+  deletedAt DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner    User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parent   Folder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderHierarchy")
+  files    File[]
+
+  // Covers the primary listing query: "children of folder X owned by Y that
+  // are not deleted", and the root listing where parentId IS NULL.
+  @@index([ownerId, parentId, deletedAt])
+  @@map("folders")
+}
+
+// ---------------------------------------------------------------------------
+// File
+// ---------------------------------------------------------------------------
+
+enum FileStatus {
+  // Row created by /uploads/init. The bytes may not exist in storage yet,
+  // so PENDING files are excluded from every listing.
+  PENDING
+  // /uploads/:id/complete verified the object exists in storage.
+  READY
+
+  @@map("file_status")
+}
+
+model File {
+  id   String @id @default(uuid()) @db.Uuid
+  name String
+
+  // Int, not BigInt: uploads are capped at 10MB and Int reaches 2GB, while
+  // BigInt would force a custom JSON serialiser (JSON.stringify throws on
+  // BigInt) for no practical gain at this scale.
+  sizeBytes   Int    @map("size_bytes")
+  contentType String @map("content_type")
+
+  // Server-generated, never client-supplied - a client-controlled key would
+  // let one user write over another's object. Format:
+  //   users/<ownerId>/<fileId>/<sanitised name>
+  storageKey String @unique @map("storage_key")
+
+  status FileStatus @default(PENDING)
+
+  // Populated asynchronously by the thumbnail worker; null for non-images
+  // and for images whose job has not finished yet.
+  thumbnailKey String? @map("thumbnail_key")
+
+  ownerId String  @map("owner_id") @db.Uuid
+  // null = sits at the owner's root, alongside root-level folders.
+  folderId String? @map("folder_id") @db.Uuid
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  owner      User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  folder     Folder?     @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  shareLinks ShareLink[]
+
+  // Primary listing query: contents of a folder for an owner.
+  @@index([ownerId, folderId, deletedAt])
+  // Filename search (GET /search?q=) scoped to the owner.
+  @@index([ownerId, name])
+  // Lets the stale-upload sweeper find abandoned PENDING rows cheaply.
+  @@index([status, createdAt])
+  @@map("files")
+}
+
+// ---------------------------------------------------------------------------
+// ShareLink
+//
+// The token is a bearer credential: anyone holding it can download the file
+// without authenticating. So only its SHA-256 hash is stored - a database
+// leak then yields no usable share URLs. SHA-256 (not bcrypt) because the
+// lookup must be an indexed equality match, and the token is 256 bits of
+// CSPRNG output rather than a low-entropy human password.
+// ---------------------------------------------------------------------------
+
+model ShareLink {
+  id        String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique @map("token_hash")
+  fileId    String @map("file_id") @db.Uuid
+
+  // Expiry is enforced in the WHERE clause (`expiresAt > now()`), never by
+  // comparing dates in application code after fetching the row.
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  // Supports "does this file already have an active share link?" for the
+  // UI's share indicator.
+  @@index([fileId, expiresAt])
+  @@map("share_links")
+}

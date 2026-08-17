@@ -16,10 +16,11 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "strictNullChecks": true,
+    // `strict` rather than the handful of individual flags the Nest CLI
+    // emits - backend/CLAUDE.md mandates it, and it additionally buys
+    // strictFunctionTypes, noImplicitThis and useUnknownInCatchVariables.
+    "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true
   }
 }

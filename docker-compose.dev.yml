@@ -1,0 +1,26 @@
+# =============================================================================
+# Local development overlay.
+#
+# docker-compose.yml is the production stack: the datastores sit on an
+# internal network with no host-published ports. Local development needs the
+# opposite - you run `npm run start:dev` on the host and need to reach
+# Postgres directly (and `prisma migrate dev` needs it too).
+#
+# This file is applied EXPLICITLY rather than being named
+# docker-compose.override.yml, because Compose auto-merges that filename.
+# An override file that publishes a database port would then silently apply
+# on a production host too. Opting in by name keeps that impossible:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
+#
+# The Makefile / README wrap this as `make dev-infra`.
+# =============================================================================
+
+services:
+  postgres:
+    ports:
+      # Defaults to 5434 rather than 5432 so it does not collide with a
+      # native Postgres install or another project's stack already bound to
+      # 5432/5433. Override with POSTGRES_HOST_PORT if 5434 is taken too;
+      # remember to match it in backend/.env's DATABASE_URL.
+      - "${POSTGRES_HOST_PORT:-5434}:5432"

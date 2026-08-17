@@ -4,6 +4,13 @@ export interface AppConfig {
   readonly cors: {
     readonly origins: readonly string[];
   };
+  readonly database: {
+    readonly url: string;
+  };
+  readonly jwt: {
+    readonly secret: string;
+    readonly expiresIn: string;
+  };
 }
 
 export default (): AppConfig => ({
@@ -14,5 +21,12 @@ export default (): AppConfig => ({
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
+  },
+  database: {
+    url: process.env.DATABASE_URL ?? '',
+  },
+  jwt: {
+    secret: process.env.JWT_SECRET ?? '',
+    expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   },
 });

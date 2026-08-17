@@ -23,6 +23,54 @@
 # =============================================================================
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    init: true
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fileapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fileapp}
+      POSTGRES_DB: ${POSTGRES_DB:-fileapp}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    # Not published to the host by default - the API reaches it over the
+    # internal network. Uncomment to inspect with a local psql/GUI client.
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      # `pg_isready -U <user>` rather than a bare call: without the user it
+      # probes the default role name and reports a false negative.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fileapp} -d ${POSTGRES_DB:-fileapp}"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
+  # Applies pending Prisma migrations, then exits. The API waits for this to
+  # finish successfully, so it never starts against an out-of-date schema.
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: migrator
+    image: file-app-migrate:latest
+    init: true
+    # One-shot: must not be restarted after it exits cleanly.
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fileapp}:${POSTGRES_PASSWORD:-fileapp}@postgres:5432/${POSTGRES_DB:-fileapp}?schema=public
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend
@@ -74,6 +122,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-fileapp}:${POSTGRES_PASSWORD:-fileapp}@postgres:5432/${POSTGRES_DB:-fileapp}?schema=public
     networks:
       - internal
     read_only: true
@@ -84,6 +133,11 @@ services:
           mode: 0o1777
     security_opt:
       - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "node", "healthcheck.js"]
       interval: 30s
@@ -140,6 +194,11 @@ services:
       timeout: 5s
       start_period: 5s
       retries: 3
+
+volumes:
+  # Named volume so database state survives `docker compose down`. Use
+  # `docker compose down -v` to discard it deliberately.
+  postgres-data:
 
 networks:
   # The only network with a route to the host's published ports.

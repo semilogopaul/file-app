@@ -4,6 +4,12 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
+/**
+ * Requires a reachable Postgres (see DATABASE_URL in backend/.env, and
+ * `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+ * postgres`). Deliberately excluded from the pre-push hook for that reason
+ * - it belongs in CI, where the service can be provisioned as a container.
+ */
 describe('HealthController (e2e)', () => {
   let app: INestApplication<App>;
 

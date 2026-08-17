@@ -1,11 +1,15 @@
 import { randomUUID } from 'crypto';
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import type { IncomingMessage } from 'http';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation.schema';
 import { HealthModule } from './health/health.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -29,8 +33,20 @@ import { HealthModule } from './health/health.module';
             : { target: 'pino-pretty', options: { singleLine: true } },
       },
     }),
-    // Feature modules register here, e.g. HealthModule, UsersModule, ...
+    PrismaModule,
+
+    // Feature modules register here.
     HealthModule,
+    AuthModule,
+  ],
+  providers: [
+    // Authenticate every route by default; @Public() is the explicit
+    // opt-out. Forgetting the decorator then fails closed (401) instead of
+    // silently exposing an endpoint.
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}

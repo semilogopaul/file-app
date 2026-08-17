@@ -38,9 +38,33 @@ FROM base AS build
 
 COPY package.json package-lock.json ./
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+COPY tsconfig.json tsconfig.build.json nest-cli.json prisma.config.ts ./
+COPY prisma ./prisma
 COPY src ./src
+
+# The Prisma client is generated code (git-ignored, into src/generated), so
+# it must be produced here before tsc runs. `generate` only reads the schema
+# - it never contacts the database - so this stays valid at build time.
+RUN npx prisma generate
 RUN npm run build
+
+# -----------------------------------------------------------------------------
+# One-shot migration runner, invoked as its own short-lived Compose service
+# before the API starts (see docker-compose.yml). Kept separate so the
+# Prisma CLI - a devDependency worth tens of megabytes - never ships inside
+# the runtime image, and so migrations are an explicit, observable step
+# rather than something hidden in the API's startup path (which would race
+# when more than one replica boots at once).
+FROM base AS migrator
+
+COPY package.json package-lock.json prisma.config.ts ./
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY prisma ./prisma
+
+# `node` (uid 1000) ships with the official image - no need to create one.
+USER node
+
+CMD ["npx", "prisma", "migrate", "deploy"]
 
 # -----------------------------------------------------------------------------
 FROM base AS production-dependencies
